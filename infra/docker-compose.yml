@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: snapland
+      POSTGRES_PASSWORD: snapland
+      POSTGRES_DB: snapland
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U snapland -d snapland"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      # Fixed container-internal port and in-network hostnames — only the
+      # HOST-side port mappings below are configurable, since nothing
+      # outside the Docker network needs to know about these.
+      PORT: 4000
+      DATABASE_URL: postgres://snapland:snapland@postgres:5432/snapland
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-change-me-please}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-me-please}
+      CORS_ORIGIN: http://localhost:${FRONTEND_PORT:-5173}
+      RATE_LIMIT_MAX_PER_MINUTE: ${RATE_LIMIT_MAX_PER_MINUTE:-50}
+      WS_PREVIEW_MAX_PER_SECOND: ${WS_PREVIEW_MAX_PER_SECOND:-20}
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    working_dir: /repo
+    command: sh -c "pnpm --filter @snapland/backend migrate:up && node apps/backend/dist/main.js"
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        # Baked into the static build, so these must be the HOST-visible
+        # backend URL (what the browser will actually call).
+        VITE_API_URL: http://localhost:${BACKEND_PORT:-4000}
+        VITE_WS_URL: ws://localhost:${BACKEND_PORT:-4000}/ws
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+
+volumes:
+  postgres_data:

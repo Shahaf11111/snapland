@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snapland Collaborative Map</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  <script src="https://www.govmap.gov.il/govmap/api/govmap.api.js" defer onload="initGovMap()"></script>
+  <script>
+  function initGovMap() {
+    govmap.createMap('map', { token: 'YOUR_API_TOKEN', background: "1", /* ... */ });
+  }
+  </script>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "snapland-task",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "postinstall": "pnpm --filter @snapland/shared build",
+    "dev": "turbo run dev --parallel",
+    "dev:backend": "turbo run dev --filter=@snapland/backend",
+    "dev:frontend": "turbo run dev --filter=@snapland/frontend",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "migrate": "pnpm --filter @snapland/backend migrate:up"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3"
+  }
+}
